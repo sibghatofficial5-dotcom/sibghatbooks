@@ -1,4 +1,4 @@
-﻿param(
+param(
     [int]$Port = 8000,
     [string]$Root = $PSScriptRoot
 )
@@ -46,6 +46,25 @@ try {
         $response = $context.Response
 
         $rawUrl = [System.Uri]::UnescapeDataString($request.Url.AbsolutePath)
+
+        if ($rawUrl -eq "/api/send-order" -or $rawUrl -eq "/api/send-inquiry") {
+            $response.ContentType = "application/json; charset=utf-8"
+            $response.StatusCode = 200
+            $reader = New-Object System.IO.StreamReader($request.InputStream, [System.Text.Encoding]::UTF8)
+            $reqBody = $reader.ReadToEnd()
+            Write-Host "[LOCAL DEV API CALL] $rawUrl received: $reqBody"
+            $jsonMsg = if ($rawUrl -eq "/api/send-order") {
+                '{"success":true,"message":"Local Dev: Order received and logged to console! (On Vercel, Resend sends to sibghatofficial5@gmail.com)"}'
+            } else {
+                '{"success":true,"message":"Local Dev: Inquiry/Newsletter received and logged! (On Vercel, Resend sends to sibghatofficial5@gmail.com)"}'
+            }
+            $jsonBytes = [System.Text.Encoding]::UTF8.GetBytes($jsonMsg)
+            $response.ContentLength64 = $jsonBytes.Length
+            $response.OutputStream.Write($jsonBytes, 0, $jsonBytes.Length)
+            $response.OutputStream.Close()
+            continue
+        }
+
         if ($rawUrl -eq "/" -or $rawUrl -eq "") {
             $relPath = "index.html"
         } else {
